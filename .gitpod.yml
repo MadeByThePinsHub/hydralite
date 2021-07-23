@@ -6,12 +6,10 @@ tasks:
   - name: Install Packages (Global)
     init: |
       yarn
-      gp sync-done yarn-install
 
   - name: Setup Web/Api Server
     # TODO: Use Docker Compose instead for starting development servers
     command: |
-      gp sync-await yarn-install
       yarn setup
       yarn dev
 

@@ -1,0 +1,56 @@
+name: docker:gitpod_ws_build
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - ".gitpod.Dockerfile"
+      - ".dockerignore"
+  pull_request:
+    branches: [dev]
+    paths:
+      - ".gitpod.Dockerfile"
+      - ".dockerignore"
+
+jobs:
+  build-image:
+    name: Build Gitpod workspace image
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v2
+
+      # Setup QEMU for multiarch builds
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      # and of course, we need to setup Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+        with:
+          driver-opts: "image=moby/buildkit:master,network=host"
+
+      - name: Build image
+        id: image-build
+        uses: docker/build-push-action@v2
+        with:
+          push: false
+          context: .
+          platforms: linux/amd64
+
+      - name: Comment PR when failed
+        uses: github-actions-up-and-running/pr-comment@v1.0.0
+        if: ${{ failure() && github.event_name == 'pull_request' }}
+        with:
+          repo-token: ${{ github.token }}
+          message: |
+            :warning: The Gitpod workspace image failed to build for commit ID ${{github.sha.}} See https://github.com/${{github.repository}}/pull/${{github.event.pull_request.number}}/checks?check_run_id=${{github.run_id}} for the build log on why it's failed.
+
+      - name: Comment PR when successful
+        uses: github-actions-up-and-running/pr-comment@v1.0.0
+        if: ${{ success() && github.event_name == 'pull_request' }}
+        with:
+          repo-token: ${{ github.token }}
+          message: |
+            :white_check_mark: The Gitpod workspace image successfully built for commit ID ${{github.sha.}} See https://github.com/${{github.repository}}/pull/${{github.event.pull_request.number}}/checks?check_run_id=${{github.run_id}} for the full build changelog.
